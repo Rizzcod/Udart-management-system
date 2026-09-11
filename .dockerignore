@@ -1,0 +1,30 @@
+# Secrets and local configuration — configuration comes from Render env vars.
+.env
+.env.*
+!.env.example
+.claude
+.idea
+.vscode
+
+# Rebuilt inside the image
+vendor
+node_modules
+public/build
+public/hot
+public/storage
+
+# Local caches; bootstrap/cache/*.php here reference dev-only packages
+bootstrap/cache/*.php
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+.phpunit.cache
+.phpunit.result.cache
+
+# Not needed at runtime
+.git
+tests
+
+# Stray report exports (seed data) — kept in the repo, not served publicly
+public/images/*.pdf

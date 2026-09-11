@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+    body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color: #1a1a2e; margin: 0; padding: 20px; }
+    .header { background: #d97706; color: #fff; padding: 16px 20px; border-radius: 6px; margin-bottom: 20px; }
+    .header h1 { margin: 0 0 4px 0; font-size: 18px; font-weight: 700; }
+    .header p  { margin: 0; font-size: 10px; opacity: .85; }
+    .kpis { margin-bottom: 16px; }
+    .kpi-row { display: flex; gap: 12px; }
+    .kpi { background: #fffbeb; border-left: 4px solid #d97706; padding: 7px 12px; border-radius: 4px; flex: 1; }
+    .kpi span { font-size: 17px; font-weight: 700; color: #92400e; }
+    .kpi small { display: block; color: #6b7280; font-size: 8px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { background: #d97706; color: #fff; padding: 6px 7px; text-align: left; font-size: 9px; }
+    tbody tr:nth-child(even) { background: #fffbeb; }
+    tbody td { padding: 5px 7px; border-bottom: 1px solid #e5e7eb; font-size: 9px; }
+    .badge-low  { background: #fee2e2; color: #991b1b; padding: 1px 5px; border-radius: 3px; }
+    .badge-ok   { background: #dcfce7; color: #15803d; padding: 1px 5px; border-radius: 3px; }
+    .footer { margin-top: 16px; padding-top: 8px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 8px; text-align: center; }
+</style>
+</head>
+<body>
+    <div class="header">
+        <h1>Inventory Report</h1>
+        <p>UDART Fleet Management System &nbsp;|&nbsp; Generated: {{ now()->format('d M Y, H:i') }}</p>
+    </div>
+
+    <div class="kpis">
+        <div class="kpi-row">
+            <div class="kpi">
+                <span>{{ $parts->count() }}</span>
+                <small>Total Part Types</small>
+            </div>
+            <div class="kpi">
+                <span>{{ $lowStock->count() }}</span>
+                <small>Low Stock Items</small>
+            </div>
+            <div class="kpi">
+                <span>{{ number_format($totalValue) }}</span>
+                <small>Total Stock Value (TZS)</small>
+            </div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Part Name</th>
+                <th>Part No.</th>
+                <th>Category</th>
+                <th>In Stock</th>
+                <th>Min Stock</th>
+                <th>Status</th>
+                <th>Total Used</th>
+                <th>Unit Price</th>
+                <th>Value (TZS)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($parts as $part)
+            <tr>
+                <td>{{ $part->part_name }}</td>
+                <td>{{ $part->part_number }}</td>
+                <td>{{ $part->category ?? '—' }}</td>
+                <td style="text-align:center;">{{ $part->quantity }}</td>
+                <td style="text-align:center;">{{ $part->minimum_stock }}</td>
+                <td>
+                    @if($part->isLowStock())
+                    <span class="badge-low">Low</span>
+                    @else
+                    <span class="badge-ok">OK</span>
+                    @endif
+                </td>
+                <td style="text-align:center;">{{ (int)($part->usages_sum_quantity_used ?? 0) }}</td>
+                <td style="text-align:right;">{{ number_format($part->unit_price) }}</td>
+                <td style="text-align:right;">{{ number_format($part->quantity * $part->unit_price) }}</td>
+            </tr>
+            @empty
+            <tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:14px;">No parts found.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    <div class="footer">UDART IMMS &nbsp;|&nbsp; Inventory Report &nbsp;|&nbsp; {{ now()->format('Y') }}</div>
+</body>
+</html>

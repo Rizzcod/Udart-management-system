@@ -1,0 +1,693 @@
+UDART Intelligent Maintenance Management System
+===============================================
+
+Laravel 11.x | PHP 8.2+ | MySQL 8.0+ | License: MIT
+
+===============================================
+TABLE OF CONTENTS
+===============================================
+
+  1.  Overview
+  2.  Features
+  3.  System Architecture
+  4.  Prerequisites
+  5.  Installation
+  6.  Configuration
+  7.  Usage
+      7.1  Getting Started
+      7.2  User Roles & Responsibilities
+      7.3  Day-to-Day System Flow
+      7.4  Preventive Maintenance Flow
+      7.5  Priority Scoring for PM Intervals
+  8.  API Documentation
+  9.  Bus Status Reference
+  10. Work Order Status Reference
+  11. Default Accounts
+  12. Scheduled Commands
+  13. Deployment
+  14. License & Acknowledgments
+
+===============================================
+1. OVERVIEW
+===============================================
+
+The UDART Intelligent Maintenance Management System is a comprehensive
+fleet maintenance platform designed to manage the University of Dar es
+Salaam transport fleet. Built with Laravel 11 and modern web
+technologies, it unifies drivers, technicians, storekeepers, supervisors,
+and administrators on one platform — replacing paper records and
+phone-call workflows with a structured, real-time system.
+
+MISSION STATEMENT
+-----------------
+To provide a reliable, intelligent, and role-aware platform that
+maximises bus uptime through structured repair workflows, proactive
+preventive maintenance, real-time IoT health monitoring, and AI-driven
+failure prediction.
+
+===============================================
+2. FEATURES
+===============================================
+
+FLEET MANAGEMENT
+----------------
+- Real-Time Fleet Board — live view of every bus split into On the Road,
+  At the Depot, In Maintenance, and Unavailable groups
+- 10 Bus Statuses — granular tracking from active through on_trip,
+  under_repair, awaiting_spare_parts, ready_for_service, and more
+- Maintenance Lock — overdue-PM buses are automatically locked from dispatch
+- Mileage Logging — per-trip odometer tracking that feeds into PM
+  interval calculations
+
+WORK ORDER WORKFLOW
+-------------------
+- 10-Stage Pipeline — Reported > Pending > Assessment > Pending Approval >
+  Assigned > (Awaiting Parts / In Progress) > Testing > Completed >
+  Returned to Service
+- Priority Levels — Low, Medium, High, Critical with visual badges
+- Spare Part Linking — record parts consumed per work order; stock
+  deducted automatically
+- Status Audit Trail — every transition is time-stamped and attributed
+  to the acting user
+
+PREVENTIVE MAINTENANCE
+----------------------
+- 10 Service Templates — Oil Change, Brake Inspection, Tyre Rotation,
+  Air Filter, Battery, Coolant, Transmission, Full Inspection,
+  Wheel Alignment, Wiper Blades
+- Intelligent Interval Scoring — 0-120 point algorithm adjusts intervals
+  for high-risk vehicles (Critical buses serviced at 50% of standard
+  interval)
+- Auto-Generate All — one click creates PM schedules for every bus x
+  every service type
+- Automatic Enforcement — daily scheduler marks overdue PM, sends 7-day
+  and 3-day warnings, and locks non-compliant buses
+
+SPARE PARTS INVENTORY
+---------------------
+- Full CRUD Catalogue — part number, quantity, minimum stock, unit
+  price, supplier
+- Low-Stock Alerts — broadcast notification fires automatically when
+  stock hits minimum
+- Usage History — every part tracks which work orders consumed how
+  many units
+
+IOT SENSOR MONITORING
+---------------------
+- ESP32 Integration — microcontrollers on each bus push readings via
+  HTTPS API
+- 4 Sensor Parameters — Engine Temperature, Vibration, Oil Pressure,
+  Battery Voltage
+- 3-Level Health Classification — Normal / Warning / Critical with
+  instant alerts
+- Time-Series Charts — per-bus sensor history visualised on the IoT
+  dashboard
+
+AI FAILURE PREDICTION
+---------------------
+- Flask ML Microservice — separate Python service analyses features and
+  returns predictions
+- 8-Feature Input — mileage, days since service, 30-day sensor averages,
+  failure history
+- Risk Levels — Low / Medium / High with confidence score and recommended
+  action
+- Bulk or Per-Bus — run predictions for one bus or the entire active
+  fleet at once
+
+FAILURE PATTERN ANALYSIS
+------------------------
+- Top Failure Types — most frequent fault descriptions fleet-wide
+- High-Risk Buses — vehicles with 3+ failures in the last 90 days
+- 12-Month Trend — bar chart showing whether fleet health is improving
+- Per-Bus Drill-Down — recurring fault types with occurrence count and
+  average interval
+
+MULTI-ROLE ACCESS
+-----------------
+- 5 Distinct Roles — Administrator, Supervisor, Technician,
+  Storekeeper, Driver
+- 29 Fine-Grained Permissions — individual permission grants/revocations
+  per user
+- Role-Based Dashboards — every role sees a different dashboard tailored
+  to their job
+- OTP Account Activation — email OTP flow ensures only legitimate staff
+  activate accounts
+
+NOTIFICATIONS & MESSAGING
+--------------------------
+- In-App Notification Centre — personal and broadcast alerts with
+  read/unread tracking
+- 14 Trigger Events — PM overdue, sensor critical, WO assigned, bus
+  locked, low stock, and more
+- Thread-Based Messaging — internal communication with 4 categories
+  (General, Protocol, Urgent, Maintenance)
+
+REPORTS & EXPORTS
+-----------------
+- 3 Report Types — Maintenance, Inventory, Fleet Performance
+- 3 Export Formats — PDF, CSV, Excel (XLSX)
+- Interactive Charts — Chart.js bar and pie charts in every report
+- MTTR Calculation — Mean Time To Repair computed per bus
+
+===============================================
+3. SYSTEM ARCHITECTURE
+===============================================
+
+TECHNOLOGY STACK
+----------------
+
+  Layer                   Technology
+  ----------------------  ------------------------------------------
+  Backend Framework       Laravel 11 (PHP 8.2+)
+  Frontend                Bootstrap 5, Blade Templates, Chart.js
+  Database                MySQL 8.0+
+  Authentication & RBAC   Laravel Breeze + Spatie/Laravel-Permission
+  IoT Endpoint            RESTful API (ESP32 over HTTPS)
+  ML / AI Service         Flask (Python) — separate microservice
+  PDF Export              DomPDF
+  Excel/CSV Export        Maatwebsite/Excel
+  Email                   Laravel Mail (SMTP) — OTP delivery
+  Localisation            English & Swahili
+  Scheduling              Laravel Artisan Task Scheduler
+
+DATABASE SCHEMA
+---------------
+
+  users                        All staff accounts
+  roles                        5 predefined roles
+  permissions                  29 individual permissions
+  model_has_roles              User <> Role mapping
+  model_has_permissions        Per-user permission overrides
+  role_has_permissions         Default permissions per role
+  buses                        Fleet vehicle records
+  work_orders                  Repair tasks with full status history
+  maintenance_records          Completed maintenance logs
+  preventive_maintenance       PM schedules (1 row per bus per service)
+  spare_parts                  Inventory catalogue
+  spare_part_usages            Parts consumed per work order
+  sensor_readings              Raw IoT data from ESP32 devices
+  failure_predictions          AI model output per bus
+  notifications                Personal and broadcast alerts
+  daily_bus_assignments        Morning dispatch records
+  mileage_logs                 Per-trip odometer entries
+  message_threads              Internal messaging threads
+  messages                     Individual thread messages
+  message_thread_participants  Thread membership + read receipts
+
+===============================================
+4. PREREQUISITES
+===============================================
+
+SYSTEM REQUIREMENTS
+-------------------
+  - PHP 8.2 or higher
+  - MySQL 8.0+
+  - Web Server: Apache 2.4+ or Nginx 1.18+
+  - Node.js 18+ (for asset compilation)
+  - Composer 2.0+
+
+EXTERNAL SERVICES
+-----------------
+  - SMTP Server        for OTP email delivery to new users
+  - Flask ML Service   Python service for AI failure predictions (optional)
+  - ESP32 IoT Devices  microcontrollers fitted on each bus (optional)
+
+===============================================
+5. INSTALLATION
+===============================================
+
+Step 1 — Clone the Repository
+------------------------------
+  git clone <repository-url> udart
+  cd udart
+
+Step 2 — Install Dependencies
+-------------------------------
+  composer install
+  npm install && npm run build
+
+Step 3 — Environment Configuration
+------------------------------------
+  cp .env.example .env
+  php artisan key:generate
+
+Step 4 — Database Setup
+-------------------------
+  mysql -u root -p -e "CREATE DATABASE udart_db;"
+  php artisan migrate --seed
+
+Step 5 — Start Development Server
+-----------------------------------
+  php artisan serve
+
+  In a separate terminal (enables PM scheduling and notifications):
+  php artisan schedule:work
+
+  Optional — start the Flask ML service for AI predictions:
+  cd ml-service
+  pip install -r requirements.txt
+  python app.py
+
+Open http://localhost:8000 in your browser and log in with any of
+the default accounts listed in Section 11.
+
+===============================================
+6. CONFIGURATION
+===============================================
+
+DATABASE
+--------
+  DB_CONNECTION=mysql
+  DB_HOST=127.0.0.1
+  DB_PORT=3306
+  DB_DATABASE=udart_db
+  DB_USERNAME=your_username
+  DB_PASSWORD=your_password
+
+EMAIL (OTP DELIVERY)
+---------------------
+  MAIL_MAILER=smtp
+  MAIL_HOST=smtp.gmail.com
+  MAIL_PORT=587
+  MAIL_USERNAME=noreply@udart.co.tz
+  MAIL_PASSWORD=your-app-password
+  MAIL_ENCRYPTION=tls
+  MAIL_FROM_ADDRESS=noreply@udart.co.tz
+  MAIL_FROM_NAME="UDART System"
+
+IOT DEVICE AUTHENTICATION
+--------------------------
+  ESP32_SECRET=your-shared-secret-token
+
+AI PREDICTION SERVICE (FLASK)
+------------------------------
+  FLASK_ML_URL=http://localhost:5000
+
+PORTFOLIO DEMO MODE
+-------------------
+  DEMO_MODE=true
+
+  Guests visiting / see a project overview page. With DEMO_MODE=true the
+  overview and sign-in pages also list one seeded account per role
+  (see config/demo.php) with a quick-fill button. Sign-in still goes
+  through the normal login, OTP check and role permissions.
+
+  Only enable DEMO_MODE on a database populated by the demo seeder, which
+  loads the sample data (dates relative to today) plus today's dispatch,
+  with the demo driver guaranteed a bus:
+    php artisan migrate:fresh --seed --seeder=DemoSeeder
+
+  For a public demo also set APP_ENV=production, APP_DEBUG=false,
+  MAIL_MAILER=log (so no OTP emails are sent), a fresh APP_KEY and a new
+  ESP32_SECRET, and re-run the command above on a schedule (e.g. nightly,
+  after midnight) so visitor changes are reset.
+
+===============================================
+7. USAGE
+===============================================
+
+7.1 GETTING STARTED
+--------------------
+  1. Access the system at http://localhost:8000
+  2. Log in with an admin account (see Section 11)
+  3. Explore the fleet board at /fleet-board for a live picture of the fleet
+  4. Create bus records under /buses before adding any other data
+  5. Run auto-generate at /preventive-maintenance to create PM schedules
+  6. Assign drivers to buses each morning via /bus-assignments
+
+-----------------------------------------------
+7.2 USER ROLES & RESPONSIBILITIES
+-----------------------------------------------
+
+ADMINISTRATOR — Full System Access
+  - Creates and manages all user accounts; assigns roles; overrides
+    individual permissions
+  - Registers new buses, updates bus details, and decommissions vehicles
+  - Creates and advances work orders through the full repair pipeline
+  - Manages preventive maintenance schedules and triggers auto-generate
+  - Manages spare-parts catalogue — adds parts, sets minimum stock levels
+  - Runs AI failure predictions for any bus or the entire fleet
+  - Views IoT sensor dashboard and per-bus sensor history
+  - Generates and exports all report types
+  - Manages role permissions globally
+
+SUPERVISOR — Operations Management
+  - Registers buses and updates bus records
+  - Creates work orders for reported faults; advances status through
+    assessment > approval > assignment > return-to-service
+  - Creates and manages preventive maintenance schedules
+  - Records spare parts used in repairs (auto-deducted from stock)
+  - Manages daily dispatch — assigns buses to drivers each morning
+  - Views fleet board, IoT sensors, and AI predictions
+  - Generates and exports all reports
+
+TECHNICIAN — Workshop Floor
+  - Views work orders assigned to them on their personalised dashboard
+  - Advances work order status as the repair progresses
+    (In Progress > Testing > Completed)
+  - Logs completed maintenance work in maintenance records
+    (description, cost, parts replaced)
+  - Views spare parts to check stock availability
+  - Views IoT sensor readings and AI predictions for a bus before
+    starting work
+
+STOREKEEPER — Inventory Management
+  - Adds new parts to the catalogue (part number, quantity, minimum
+    stock, price, supplier)
+  - Updates stock quantities after receiving deliveries
+  - Views critically low parts highlighted in red on their dashboard
+  - Views part usage history to understand consumption patterns
+  - Generates and exports the inventory report
+
+DRIVER — Field Operations
+  - Views today's bus assignment from a simplified, separate portal
+  - Starts a trip — changes bus status to on_trip
+  - Ends a trip — logs km travelled, odometer reading, and route
+  - Reports breakdowns directly — creates a work order instantly and
+    alerts maintenance
+  - Tracks repair progress on all breakdown reports they have submitted
+
+-----------------------------------------------
+7.3 DAY-TO-DAY SYSTEM FLOW
+-----------------------------------------------
+
+  MORNING DISPATCH
+  Supervisor > /bus-assignments > assigns bus to driver > driver notified
+
+  TRIP START
+  Driver > /driver/dashboard > Start Trip > bus status: on_trip
+
+  BREAKDOWN OCCURS
+  Driver > Report Breakdown > work order created (status: reported)
+                            > bus status: breakdown_reported
+                            > all maintenance staff notified (broadcast)
+
+  REPAIR WORKFLOW
+  Supervisor acknowledges    > status: pending
+  Supervisor inspects        > status: assessment
+  Supervisor approves        > status: pending_approval > assigned
+                                       |                       |
+  Technician needs parts   > status: awaiting_parts    > in_progress
+  Part arrives             ^                           > testing
+                                                       > completed
+                                                       > returned_to_service
+
+  BUS BACK IN SERVICE
+  Bus status > active
+  Driver notified: "Your bus is back in service"
+  Maintenance record created as permanent log
+
+-----------------------------------------------
+7.4 PREVENTIVE MAINTENANCE FLOW
+-----------------------------------------------
+
+  Auto-generate creates schedules for every bus x every service type
+             |
+  Scheduler runs daily:
+    - 7 days before due  > Warning notification (broadcast)
+    - 3 days before due  > Alert notification (broadcast)
+    - Past due date      > status: overdue
+                         > bus locked (maintenance_locked = true)
+                         > bus status: under_preventive_maintenance
+             |
+  Supervisor / Technician performs service > status: completed
+             |
+  System calculates next due date using bus priority score
+  Bus unlocked > status: active
+
+-----------------------------------------------
+7.5 PRIORITY SCORING FOR PM INTERVALS
+-----------------------------------------------
+
+  SCORING FACTORS
+  ---------------
+  Factor                                              Points
+  --------------------------------------------------  --------
+  Vehicle age (4 pts/year, max 40)                    0 - 40
+  Breakdowns in last 2 years (8 pts each, max 40)     0 - 40
+  Maintenance records last 12 months (5 pts, max 20)  0 - 20
+  Total mileage (1 pt per 6,250 km, max 20)           0 - 20
+
+  INTERVAL APPLIED
+  ----------------
+  Score      Priority   Interval Used
+  ---------  ---------  -------------------
+  0 - 24     Low        100% of standard
+  25 - 49    Medium     80% of standard
+  50 - 79    High       65% of standard
+  80 - 120   Critical   50% of standard
+
+  Example: A bus scoring Critical gets a 90-day oil change shortened
+  to 45 days.
+
+===============================================
+8. API DOCUMENTATION
+===============================================
+
+IOT SENSOR READINGS (ESP32 ENDPOINT)
+--------------------------------------
+
+  Endpoint:  POST /api/sensor-readings
+  Header:    X-ESP32-Token: <your-esp32-secret>
+  Content:   application/json
+
+  Request Body:
+  {
+    "bus_id": 3,
+    "temperature": 88.4,
+    "vibration": 1.2,
+    "oil_pressure": 45.0,
+    "battery_voltage": 12.7
+  }
+
+  Response:
+  {
+    "status": "recorded",
+    "health": "warning",
+    "message": "Reading saved. Temperature is in warning range."
+  }
+
+  SENSOR THRESHOLDS
+  -----------------
+  Sensor                   Normal    Warning      Critical
+  -----------------------  --------  -----------  --------
+  Engine Temperature (C)   <= 85     85 - 95      > 95
+  Vibration (g)            <= 1.5    1.5 - 2.5    > 2.5
+  Oil Pressure (PSI)       >= 30     20 - 30      < 20
+  Battery Voltage (V)      >= 12     11 - 12      < 11
+
+  A reading is classified by its worst individual sensor.
+  A Critical reading creates an immediate broadcast notification.
+
+AI PREDICTION FEATURE SET
+--------------------------
+
+  Sent to Flask ML service at POST <FLASK_ML_URL>/predict
+
+  Feature                   Description
+  ------------------------  --------------------------------------------
+  bus_mileage               Current odometer reading (km)
+  days_since_last_service   Days since last maintenance record
+  avg_temperature_30d       30-day rolling average temperature (C)
+  avg_vibration_30d         30-day rolling average vibration (g)
+  avg_pressure_30d          30-day rolling average oil pressure (PSI)
+  failure_count_6m          Completed work orders in the past 6 months
+  days_since_last_failure   Days since most recent completed work order
+  service_interval_days     Standard PM interval for this bus
+
+  Flask Response:
+  {
+    "risk_level": "high",
+    "predicted_failure_type": "Engine Overheating",
+    "confidence_score": 87.4,
+    "recommended_action": "Schedule cooling system inspection within 3 days"
+  }
+
+===============================================
+9. BUS STATUS REFERENCE
+===============================================
+
+  Status                          Meaning                               Dispatch?
+  ------------------------------  ------------------------------------  ---------
+  active                          At depot, in good condition, ready    YES
+  on_trip                         Currently on the road with a driver   NO (in use)
+  maintenance_due                 PM due within 7 days or overdue       WARNING
+  under_preventive_maintenance    Locked for scheduled PM service       NO (locked)
+  breakdown_reported              Driver submitted a breakdown report   NO
+  under_repair                    Work order in progress                NO
+  awaiting_spare_parts            Repair paused — part out of stock     NO
+  ready_for_service               Repair done; awaiting sign-off        NO (pending)
+  out_of_service                  Formally decommissioned               NO
+  inactive                        Not in current use                    NO
+
+  MAINTENANCE LOCK
+  ----------------
+  Independent of status, a bus can be maintenance-locked
+  (maintenance_locked = true). When locked:
+  - It cannot appear in the dispatch assignment form
+  - A broadcast alert is sent to all staff
+  - The lock releases automatically once all overdue PM is completed
+
+===============================================
+10. WORK ORDER STATUS REFERENCE
+===============================================
+
+  Status                What Is Happening                    Bus Status Impact
+  --------------------  -----------------------------------  -----------------------
+  reported              Fault logged, not yet reviewed       > breakdown_reported
+  pending               Acknowledged, queued for inspection  —
+  assessment            Bus being inspected                  —
+  pending_approval      Awaiting management sign-off         —
+  assigned              Technician assigned                  —
+  awaiting_parts        Work paused, part out of stock       > awaiting_spare_parts
+  in_progress           Technician actively repairing        > under_repair
+  testing               Running road/engine tests            —
+  completed             Tests passed, bus cleared            > ready_for_service
+  returned_to_service   Supervisor confirmed, bus returned   > active
+  cancelled             Work order voided                    —
+
+  PRIORITY LEVELS
+  ---------------
+  Priority   Meaning
+  ---------  -------------------------------------------------------
+  Low        Minor cosmetic issue; bus can safely keep running
+  Medium     Noticeable fault; address soon, not immediately dangerous
+  High       Significant safety/performance fault; resolve within hours
+  Critical   Bus unsafe or non-functional; immediate response required
+
+===============================================
+11. DEFAULT ACCOUNTS
+===============================================
+
+  After running:  php artisan migrate --seed
+
+  !! SECURITY NOTICE: Change all passwords before going to production !!
+
+  Accounts are created by an Administrator (Users > Create) and activated
+  by email OTP; there is no public self-registration.
+
+  Email                      Role             Password
+  -------------------------  ---------------  --------
+  admin@udart.co.tz         Administrator    password
+  supervisor@udart.co.tz     Supervisor       password
+  supervisor2@udart.co.tz    Supervisor       password
+  tech@udart.co.tz           Technician       password
+  tech2@udart.co.tz          Technician       password
+  tech3@udart.co.tz          Technician       password
+  store@udart.co.tz          Storekeeper      password
+  driver@udart.co.tz         Driver           password
+  driver2@udart.co.tz        Driver           password
+  driver3@udart.co.tz        Driver           password
+  driver4@udart.co.tz        Driver           password
+  driver5@udart.co.tz        Driver           password
+
+  The seeder also creates 10 buses (UDART-001 to UDART-010), sample
+  work orders, maintenance records, PM schedules, spare parts, sensor
+  readings, and AI prediction records.
+
+===============================================
+12. SCHEDULED COMMANDS
+===============================================
+
+  These commands run automatically via Laravel Task Scheduler.
+  They can also be run manually at any time.
+
+  Command                                    Schedule  What It Does
+  -----------------------------------------  --------  ----------------------------------
+  maintenance:generate-schedules             Daily     Creates PM entries for all buses
+                                                       and advances completed schedules
+  maintenance:check-due                      Daily     Marks overdue PM; sends 7-day and
+                                                       3-day advance notifications
+  maintenance:enforce-restrictions           Daily     Locks buses with overdue PM;
+                                                       unlocks fully compliant buses
+  predictions:run-all                        Weekly    Runs AI prediction for every
+                                                       active bus and saves results
+
+  Run manually:
+  php artisan maintenance:generate-schedules
+  php artisan maintenance:check-due
+  php artisan maintenance:enforce-restrictions
+  php artisan predictions:run-all
+
+===============================================
+13. DEPLOYMENT
+===============================================
+
+PRODUCTION SERVER REQUIREMENTS
+-------------------------------
+  - PHP 8.2+ with extensions: mbstring, openssl, PDO, tokenizer,
+    XML, ctype, JSON, BCMath
+  - MySQL 8.0+
+  - Nginx or Apache with SSL (HTTPS required for ESP32 IoT push)
+  - Supervisor for queue workers
+
+DEPLOYMENT STEPS
+----------------
+
+  1. Server Preparation
+     sudo apt update && sudo apt upgrade -y
+     sudo apt install php8.2 php8.2-fpm nginx mysql-server
+
+  2. Application Deployment
+     git clone <repository-url> udart
+     cd udart
+     composer install --optimize-autoloader --no-dev
+     npm install && npm run build
+
+  3. Environment & Keys
+     cp .env.example .env
+     php artisan key:generate
+     (Edit .env with production database, mail, ESP32, and Flask values)
+
+  4. Database
+     php artisan migrate --force
+     php artisan db:seed --class=RoleSeeder
+     php artisan db:seed --class=PermissionSeeder
+     php artisan db:seed --class=BusSeeder
+
+  5. Caching & Optimisation
+     php artisan config:cache
+     php artisan route:cache
+     php artisan view:cache
+     php artisan optimize
+
+  6. Queue Workers (Supervisor)
+     Create /etc/supervisor/conf.d/udart-worker.conf:
+
+     [program:udart-worker]
+     command=php /var/www/udart/artisan queue:work --sleep=3 --tries=3
+     autostart=true
+     autorestart=true
+     user=www-data
+
+     sudo supervisorctl reread
+     sudo supervisorctl update
+     sudo supervisorctl start udart-worker:*
+
+  7. Task Scheduler (Cron)
+     Add to crontab (crontab -e):
+     * * * * * cd /var/www/udart && php artisan schedule:run >> /dev/null 2>&1
+
+  8. SSL Certificate
+     sudo apt install certbot python3-certbot-nginx
+     sudo certbot --nginx -d your-domain.com
+
+===============================================
+14. LICENSE & ACKNOWLEDGMENTS
+===============================================
+
+LICENSE
+-------
+This project was developed as a final-year engineering capstone project
+at the University of Dar es Salaam. All rights reserved.
+
+TECHNOLOGY USED
+---------------
+  - Laravel              https://laravel.com
+  - Spatie Permission    https://spatie.be/docs/laravel-permission
+  - Bootstrap            https://getbootstrap.com
+  - Chart.js             https://www.chartjs.org
+  - DomPDF               https://github.com/dompdf/dompdf
+  - Maatwebsite/Excel    https://laravel-excel.com
+
+

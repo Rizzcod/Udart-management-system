@@ -1,0 +1,30 @@
+<?php
+
+namespace Tests\Feature\Auth;
+
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class RegistrationTest extends TestCase
+{
+    use RefreshDatabase;
+
+    // Accounts are created by administrators; public self-registration is disabled.
+    public function test_registration_screen_is_not_available(): void
+    {
+        $this->get('/register')->assertNotFound();
+    }
+
+    public function test_guests_cannot_register(): void
+    {
+        $this->post('/register', [
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ])->assertNotFound();
+
+        $this->assertGuest();
+        $this->assertDatabaseMissing('users', ['email' => 'test@example.com']);
+    }
+}
