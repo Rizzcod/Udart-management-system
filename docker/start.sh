@@ -5,6 +5,15 @@ set -e
 
 cd /var/www/html
 
+# Render mounts secret files (e.g. the database CA certificate) readable by root
+# only, but Apache's PHP runs as www-data. Copy the certificate to a location
+# www-data can read (outside public/) before the config is cached.
+if [ -n "${MYSQL_ATTR_SSL_CA:-}" ] && [ -f "$MYSQL_ATTR_SSL_CA" ]; then
+    cp "$MYSQL_ATTR_SSL_CA" storage/mysql-ca.pem
+    chmod 644 storage/mysql-ca.pem
+    export MYSQL_ATTR_SSL_CA=/var/www/html/storage/mysql-ca.pem
+fi
+
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
