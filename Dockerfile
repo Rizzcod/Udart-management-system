@@ -11,8 +11,10 @@ RUN apt-get update \
     && docker-php-ext-install -j"$(nproc)" gd zip pdo_mysql opcache \
     && rm -rf /var/lib/apt/lists/*
 
-# Production php.ini: display_errors=Off, expose_php=Off.
-RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+# Production php.ini (display_errors=Off); it still sets expose_php=On, so also
+# drop the X-Powered-By version banner.
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
+    && echo "expose_php = Off" > "$PHP_INI_DIR/conf.d/zz-production.ini"
 
 # Serve only public/, honour Laravel's .htaccess, listen on Render's $PORT,
 # hide version banners, and cap workers to fit a 512 MB instance.
