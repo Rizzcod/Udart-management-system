@@ -25,5 +25,24 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // When the database cannot be reached (host down or powered off, network,
+        // TLS or credential failure), show a "temporarily unavailable" page with
+        // HTTP 503 instead of a generic 500. The exception is still logged in full.
+        $exceptions->render(function (\PDOException $e, \Illuminate\Http\Request $request) {
+            if (! preg_match('/SQLSTATE\[\w+\] \[(1045|2002|2003|2005|2006|2013)\]/', $e->getMessage())) {
+                return null;
+            }
+
+            $message = 'Service temporarily unavailable. Please try again shortly.';
+            $headers = ['Retry-After' => '60'];
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 503, $headers);
+            }
+
+            // Same view lookup Laravel uses for HTTP errors: resources/views/errors first.
+            (new \Illuminate\Foundation\Exceptions\RegisterErrorViewPaths)();
+
+            return response()->view('errors::503', [], 503, $headers);
+        });
     })->create();

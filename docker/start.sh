@@ -5,6 +5,24 @@ set -e
 
 cd /var/www/html
 
+# Refuse to start without the production settings instead of silently falling
+# back to Laravel's local defaults (e.g. a throwaway SQLite database).
+missing=""
+for var in APP_KEY DB_CONNECTION DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD; do
+    eval "value=\${$var:-}"
+    if [ -z "$value" ]; then
+        missing="$missing $var"
+    fi
+done
+if [ -n "$missing" ]; then
+    echo "FATAL: required environment variables are not set:$missing" >&2
+    exit 1
+fi
+if [ -n "${MYSQL_ATTR_SSL_CA:-}" ] && [ ! -f "$MYSQL_ATTR_SSL_CA" ]; then
+    echo "FATAL: MYSQL_ATTR_SSL_CA points to a missing file ($MYSQL_ATTR_SSL_CA) — add the secret file." >&2
+    exit 1
+fi
+
 # Render mounts secret files (e.g. the database CA certificate) readable by root
 # only, but Apache's PHP runs as www-data. Copy the certificate to a location
 # www-data can read (outside public/) before the config is cached.

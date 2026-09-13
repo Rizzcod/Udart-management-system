@@ -19,6 +19,9 @@ class NotificationController extends Controller
 
     public function markRead(Notification $notification)
     {
+        // Same scope as index(): broadcasts (no user) or the user's own notifications.
+        abort_unless(is_null($notification->user_id) || $notification->user_id == auth()->id(), 403);
+
         $notification->update(['is_read' => true]);
         return back();
     }

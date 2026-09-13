@@ -59,6 +59,9 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                // Fail fast (seconds) when the database host is unreachable instead of
+                // holding the request for PHP's 60-second default.
+                PDO::ATTR_TIMEOUT => (int) env('DB_CONNECT_TIMEOUT', 5),
             ]) : [],
         ],
 
